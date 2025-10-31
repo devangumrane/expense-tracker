@@ -34,7 +34,7 @@ export const create = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: transaction,
+      data: transaction, 
     });
 
   } catch (error) {

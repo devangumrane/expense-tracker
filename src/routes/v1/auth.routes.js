@@ -8,6 +8,6 @@ const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
-router.post("/validation",verifyToken, transactionController.create);
+router.get("/validation",verifyToken, transactionController.create);
 
 export default router;

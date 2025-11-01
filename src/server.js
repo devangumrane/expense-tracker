@@ -9,21 +9,23 @@ dotenv.config();
 const app = express();
 
 // CORS configuration
+const allowedOrigins = [process.env.FRONTEND_URL, "http://localhost:5173"];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
 }));
 
 // Middleware
 app.use(express.json()); // Parse JSON request bodies
 app.use(helmet()); // Security middleware
 app.use(morgan("dev")); // Logging middleware
-
-// Basic route
-// app.get("/", (req, res) => {
-//   res.json({ message: "Expense Tracker Backend is running 🚀" });
-// });
 
 app.use("/api/v1", router);
 

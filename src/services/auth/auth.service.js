@@ -11,7 +11,7 @@ export const registerUser = async ({ email, password, name }) => {
 
   const passwordHash = await hashPassword(password);
 
-  // ✅ FIXED: Use correct field names from schema
+  // Use correct field names from schema
  
   const user = await prisma.user.create({
     data: { 
@@ -32,13 +32,30 @@ export const loginUser = async ({ email, password }) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error("Invalid credentials");
 
-  // ✅ FIXED: Use passwordHash field
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) throw new Error("Invalid credentials");
 
   const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-  
-  // Return user without password
+
   const { passwordHash: _, ...userWithoutPassword } = user;
-  return { user: userWithoutPassword, token };
+
+  return {
+    message: "Login successful",
+    user: userWithoutPassword,
+    token,
+  };
 };
+
+export const getUserById = async (id) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id }, // ❌ no Number() — keep as string for UUID
+      select: { id: true, fullName: true, email: true },
+    });
+    return user;
+  } catch (err) {
+    console.error("🔥 Prisma getUserById error:", err);
+    throw new Error("Database error");
+  }
+};
+

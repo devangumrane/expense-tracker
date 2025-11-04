@@ -162,7 +162,7 @@ export const getTransactionSummary = async (userId, startDate, endDate) => {
     summary.byCategory[catId] += Number(t.amount);
   });
 
-  summary.netSavings = summary.totalIncome - summary.totalExpense;
+  summary.netBalance = summary.totalIncome - summary.totalExpense;
 
   return summary;
 };

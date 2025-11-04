@@ -10,7 +10,7 @@ export const verifyToken = (req, res, next) => {
     if (err)
       return res.status(403).json({ message: "Invalid or expired token" });
 
-    console.log("✅ Decoded JWT:", decoded); // 👈 ADD THIS
+    console.log("✅ Decoded JWT:", decoded); 
 
     req.user = { userId: decoded.userId || decoded.id }; // ensure correct key
     console.log("Decoded JWT:", decoded);

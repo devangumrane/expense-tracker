@@ -1,0 +1,4 @@
+::1 - - [17/Nov/2025:11:45:37 +0000] "POST /api/v1/auth/register HTTP/1.1" 400 675 "-" "PostmanRuntime/7.49.1"
+::1 - - [17/Nov/2025:11:48:38 +0000] "POST /api/v1/auth/register HTTP/1.1" 201 391 "-" "PostmanRuntime/7.49.1"
+::1 - - [17/Nov/2025:11:49:33 +0000] "POST /api/v1/transaction HTTP/1.1" 401 1294 "-" "PostmanRuntime/7.49.1"
+::1 - - [17/Nov/2025:11:50:13 +0000] "POST /api/v1/transaction HTTP/1.1" 201 671 "-" "PostmanRuntime/7.49.1"

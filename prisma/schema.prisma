@@ -1,0 +1,260 @@
+// ============================================
+// PRISMA CONFIG
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum SourceType {
+  MANUAL
+  SMS
+  BANK
+  API
+}
+
+// ============================================
+// USER MODEL
+// ============================================
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String   @map("password_hash")
+  fullName           String?  @map("full_name")
+  phoneNumber        String?  @map("phone_number")
+  monthlyIncome      Decimal? @map("monthly_income") @db.Decimal(12, 2)
+  currencyPreference String   @default("INR") @map("currency_preference")
+  timezone           String   @default("Asia/Kolkata")
+  profilePicture     String?  @map("profile_picture")
+  lastLogin          DateTime? @map("last_login")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  transactions     Transaction[]
+  budgets          Budget[]
+  insights         UserInsight[]
+  merchantMappings MerchantMapping[]
+  customCategories Category[]        @relation("UserCustomCategories")
+  refreshTokens    RefreshToken[]
+
+  @@map("users")
+}
+
+// ============================================
+// PAYMENT METHOD
+// ============================================
+
+model PaymentMethod {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  displayName String   @map("display_name")
+  icon        String
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  transactions Transaction[]
+
+  @@map("payment_methods")
+}
+
+// ============================================
+// TRANSACTION MODEL
+// ============================================
+
+model Transaction {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+
+  transactionType TransactionType @map("transaction_type")
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @default("INR")
+
+  paymentMethodId Int?           @map("payment_method_id")
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+
+  merchantName       String? @map("merchant_name")
+  merchantNormalized String? @map("merchant_normalized")
+
+  categoryId Int      @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  subcategory String?
+  description String? @db.Text
+  tags        String[] @default([])
+
+  accountLast4 String? @map("account_last4")
+  referenceId  String? @map("reference_id")
+
+  transactionDate DateTime @map("transaction_date")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  smsSender String? @map("sms_sender")
+  smsHash   String? @unique @map("sms_hash")
+
+  confidenceScore Decimal? @map("confidence_score") @db.Decimal(3, 2)
+  parsingMethod   String?  @map("parsing_method")
+  userCorrected   Boolean  @default(false) @map("user_corrected")
+
+  // Enhancements
+  transactionSource SourceType @default(MANUAL) @map("transaction_source")
+  isDeleted Boolean @default(false) @map("is_deleted")
+  deletedAt DateTime? @map("deleted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, transactionDate(sort: Desc)])
+  @@index([userId, categoryId])
+  @@index([userId, transactionType])
+  @@index([transactionDate, transactionType])
+  @@index([userId, categoryId, transactionType])
+  @@index([smsHash])
+  @@index([paymentMethodId])
+  @@map("transactions")
+}
+
+// ============================================
+// CATEGORY MODEL
+// ============================================
+
+model Category {
+  id Int @id @default(autoincrement())
+
+  userId String? @map("user_id")
+  user   User?   @relation("UserCustomCategories", fields: [userId], references: [id], onDelete: Cascade)
+
+  code        String @unique
+  displayName String @map("display_name")
+  icon        String
+  colorHex    String @map("color_hex")
+
+  parentId Int?       @map("parent_id")
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+
+  type      CategoryType
+  isSystem  Boolean  @default(true) @map("is_system")
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@index([userId, type])
+  @@index([isSystem, isActive])
+  @@map("categories")
+}
+
+// ============================================
+// MERCHANT MAPPING
+// ============================================
+
+model MerchantMapping {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  merchantName    String   @map("merchant_name")
+  categoryId      Int      @map("category_id")
+  confidenceScore Decimal? @map("confidence_score") @db.Decimal(3, 2)
+  timesCorrected  Int      @default(0) @map("times_corrected")
+  lastUsed        DateTime @default(now()) @map("last_used")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantName])
+  @@index([userId, categoryId])
+  @@map("merchant_mappings")
+}
+
+// ============================================
+// BUDGET MODEL
+// ============================================
+
+model Budget {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  categoryId     Int      @map("category_id")
+  monthlyLimit   Decimal  @map("monthly_limit") @db.Decimal(10, 2)
+  alertThreshold Decimal  @default(0.80) @map("alert_threshold") @db.Decimal(3, 2)
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([userId, categoryId])
+  @@map("budgets")
+}
+
+// ============================================
+// USER INSIGHT MODEL
+// ============================================
+
+model UserInsight {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+
+  totalSpent       Decimal @map("total_spent") @db.Decimal(12, 2)
+  totalEarned      Decimal @map("total_earned") @db.Decimal(12, 2)
+  transactionCount Int     @map("transaction_count")
+  avgTransaction   Decimal @map("avg_transaction") @db.Decimal(10, 2)
+
+  categoryBreakdown Json     @map("category_breakdown")
+  spendingTrend     String   @map("spending_trend")
+  topMerchants      Json     @map("top_merchants")
+  anomalies         Json?
+  recommendations   String[]
+
+  healthScore Int? @map("health_score")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart, periodEnd])
+  @@index([userId, periodStart])
+  @@map("user_insights")
+}
+
+// ============================================
+// REFRESH TOKEN MODEL
+// ============================================
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique
+  userId     String
+  expiresAt  DateTime
+  revoked    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
